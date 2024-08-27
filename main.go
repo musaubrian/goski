@@ -49,7 +49,7 @@ func main() {
 		img = resize.Resize(uint(nw), uint(nh), img, resize.MitchellNetravali)
 	}
 
-	asciiChars := " .,::;-~=+*#%@"
+	asciiChars := " .,:;i1tfLCG08@"
 	font := strings.Split(asciiChars, "")
 	if useColor {
 		coloredAsciiOutput(img, font)
