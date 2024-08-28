@@ -9,6 +9,7 @@ import (
 	_ "image/png"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/KononK/resize"
@@ -21,8 +22,8 @@ func main() {
 	var useAutoScale bool
 
 	flag.StringVar(&imgPath, "img", "", "Path to image file")
-	flag.BoolVar(&useColor, "color", false, "Output colored ascii art")
-	flag.BoolVar(&useAutoScale, "scale", false, "Auto scale the output to fit in your term")
+	flag.BoolVar(&useColor, "c", false, "Output colored ascii art")
+	flag.BoolVar(&useAutoScale, "s", false, "Auto scale the output to fit in your term")
 	flag.Parse()
 
 	if len(imgPath) == 0 {
@@ -52,24 +53,31 @@ func main() {
 	asciiChars := " .,:;i1tfLCG08@"
 	font := strings.Split(asciiChars, "")
 	if useColor {
-		coloredAsciiOutput(img, font)
+		asciiOutput := coloredAsciiOutput(img, font)
+		fmt.Print(asciiOutput)
 	} else {
-		grayScaledAscii(img, font)
+		asciiOutput := grayScaledAscii(img, font)
+		fmt.Print(asciiOutput)
 	}
-
 }
-func grayScaledAscii(img image.Image, font []string) {
+
+func grayScaledAscii(img image.Image, font []string) string {
+	var asciiImgChars strings.Builder
+
 	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
 		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
 			c := color.GrayModel.Convert(img.At(x, y)).(color.Gray)
 			char := int(c.Y) * (len(font) - 1) / 255
-			fmt.Print(font[char])
+			asciiImgChars.WriteString(font[char])
+
 		}
-		fmt.Println()
+		asciiImgChars.WriteString("\n")
 	}
+	return asciiImgChars.String()
 }
 
-func coloredAsciiOutput(img image.Image, font []string) {
+func coloredAsciiOutput(img image.Image, font []string) string {
+	var coloredAscii strings.Builder
 	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
 		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
 			c := img.At(x, y)
@@ -82,10 +90,11 @@ func coloredAsciiOutput(img image.Image, font []string) {
 			avg := (r + g + b) / 3
 			char := int(avg) * (len(font) - 1) / 255
 
-			fmt.Printf("\x1b[38;2;%d;%d;%dm%s", r, g, b, font[char])
+			coloredAscii.WriteString(fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s", r, g, b, font[char]))
 		}
-		fmt.Println("\x1b[0m")
+		coloredAscii.WriteString(fmt.Sprint("\n\x1b[0m"))
 	}
+	return coloredAscii.String()
 }
 
 func getTerminalSize() (int, int) {
@@ -110,4 +119,13 @@ func autoScale(imgWidth, imgHeight, termWidth, termHeight int) (int, int) {
 	}
 
 	return newWidth, targetHeight
+}
+
+func renameFile(imgPath string) string {
+	baseName := filepath.Base(imgPath)
+	name := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+
+	newPath := name + ".ascii" + filepath.Ext(baseName)
+
+	return filepath.Join(filepath.Dir(imgPath), newPath)
 }

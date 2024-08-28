@@ -23,11 +23,11 @@ go build .
 ## Usage
 Run the program with the following command-line options:
 ```sh
-goski -img <path-to-image> [-color] [-scale]
+goski -img <path-to-image> [-c] [-s]
 ```
 
 Options:
 - `img <image-path>`: Specifies the path to the image file you want to convert.**(Required)**
-- `color`: Outputs ASCII art with color. By default, the ASCII art is grayscale.
-- `scale`: Automatically *scales the output to fit the dimensions of your terminal.
+- `c`: Outputs ASCII art with color. By default, the ASCII art is grayscale.
+- `s`: Automatically *scales the output to fit the dimensions of your terminal.
 If not specified, the image will be converted to ASCII art at its original size.
