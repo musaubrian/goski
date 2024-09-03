@@ -34,6 +34,6 @@ Options:
 - `s`: Automatically *scales the output to fit the dimensions of your terminal.(defaults to true)
 - `r`: Allows you to pass in a resource (image) from the interwebs by using the image url in the `img` flag
 
-> ![NOTE]
+> [!NOTE]
 > To have a good time with the remote resource flag, wrap the url in quotation marks.
 > `goski -c -img "<really_long_and_or_complex_url>" -r`
