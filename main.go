@@ -7,10 +7,13 @@ import (
 	"image/color"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"log/slog"
+	"math/rand/v2"
+	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/KononK/resize"
 	"golang.org/x/term"
@@ -21,29 +24,43 @@ func main() {
 		imgPath      string
 		useColor     bool
 		useAutoScale bool
+		remote       bool
 	)
 
 	flag.StringVar(&imgPath, "img", "", "Path to image file")
 	flag.BoolVar(&useColor, "c", false, "Output colored ascii art")
-	flag.BoolVar(&useAutoScale, "s", false, "Auto scale the output to fit in your term")
+	flag.BoolVar(&useAutoScale, "s", true, "Auto scale the output to fit in your term")
+	flag.BoolVar(&remote, "r", false, "Allows you to pass in a url to the image")
 	flag.Parse()
 
 	if len(imgPath) == 0 {
 		flag.Usage()
-		os.Exit(1)
+		return
+	}
+
+	if strings.Contains(imgPath, "http") && !remote {
+		slog.Error("To use a remote resource, please use the `-r` flag")
+		return
+	} else {
+		filepath, err := getRemoteResource(imgPath)
+		if err != nil {
+			slog.Error(err.Error())
+			return
+		}
+		imgPath = filepath
 	}
 
 	f, err := os.Open(imgPath)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to open:\n%s", err.Error()))
-		os.Exit(1)
+		return
 	}
 	defer f.Close()
 
 	img, _, err := image.Decode(f)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to decode: %s", err.Error()))
-		os.Exit(1)
+		return
 	}
 
 	if useAutoScale {
@@ -58,10 +75,11 @@ func main() {
 	if useColor {
 		asciiOutput := coloredAsciiOutput(img, font)
 		fmt.Print(asciiOutput)
-	} else {
-		asciiOutput := grayScaledAscii(img, font)
-		fmt.Print(asciiOutput)
+		return
 	}
+
+	asciiOutput := grayScaledAscii(img, font)
+	fmt.Print(asciiOutput)
 }
 
 func grayScaledAscii(img image.Image, font []string) string {
@@ -89,7 +107,7 @@ func coloredAsciiOutput(img image.Image, font []string) string {
 			r = r >> 8
 			g = g >> 8
 			b = b >> 8
-			// Calculate average intensity
+			// average intensity
 			avg := (r + g + b) / 3
 			char := int(avg) * (len(font) - 1) / 255
 
@@ -122,4 +140,91 @@ func autoScale(imgWidth, imgHeight, termWidth, termHeight int) (int, int) {
 	}
 
 	return newWidth, targetHeight
+}
+
+func getRemoteResource(url string) (string, error) {
+	errCh := make(chan error)
+	spinnerCh := make(chan bool, 1)
+	bodyCh := make(chan []byte)
+
+	go spinner(spinnerCh)
+	go func() {
+		defer func() {
+			spinnerCh <- false
+
+			close(errCh)
+			close(bodyCh)
+		}()
+
+		spinnerCh <- true
+		r, err := http.Get(url)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		defer r.Body.Close()
+
+		if r.StatusCode != 200 {
+			errCh <- fmt.Errorf("Could not find resource")
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		bodyCh <- body
+	}()
+
+	file := "/tmp/" + generateName()
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return "", err
+	}
+
+	defer f.Close()
+
+	select {
+	case body := <-bodyCh:
+		_, err = f.Write(body)
+		if err != nil {
+			return "", err
+		}
+	case err := <-errCh:
+		return "", err
+
+	}
+
+	return file, <-errCh
+}
+
+func spinner(spinnerCh <-chan bool) {
+	charset := "⢿⣻⣽⣾⣷⣯⣟⡿"
+	chars := strings.Split(charset, "")
+
+	for i := 0; ; i++ {
+		select {
+		case run := <-spinnerCh:
+			if !run {
+				return
+			}
+		default:
+			fmt.Printf("%s\r\b", chars[i%len(chars)])
+			time.Sleep(time.Millisecond * 50)
+		}
+	}
+}
+
+func generateName() string {
+	wl := 3
+	cs := "bcdfghjklmnpqrstvwxzy"
+	vs := "aeiou"
+	var result string
+
+	for i := 0; i < wl; i++ {
+		result += string(cs[rand.IntN(len(cs))])
+		result += string(vs[rand.IntN(len(vs))])
+	}
+	return "img.goski_" + result
 }
