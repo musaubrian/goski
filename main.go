@@ -17,9 +17,11 @@ import (
 )
 
 func main() {
-	var imgPath string
-	var useColor bool
-	var useAutoScale bool
+	var (
+		imgPath      string
+		useColor     bool
+		useAutoScale bool
+	)
 
 	flag.StringVar(&imgPath, "img", "", "Path to image file")
 	flag.BoolVar(&useColor, "c", false, "Output colored ascii art")
@@ -51,6 +53,7 @@ func main() {
 	}
 
 	asciiChars := " .,:;i1tfLCG08@"
+
 	font := strings.Split(asciiChars, "")
 	if useColor {
 		asciiOutput := coloredAsciiOutput(img, font)
@@ -119,13 +122,4 @@ func autoScale(imgWidth, imgHeight, termWidth, termHeight int) (int, int) {
 	}
 
 	return newWidth, targetHeight
-}
-
-func renameFile(imgPath string) string {
-	baseName := filepath.Base(imgPath)
-	name := strings.TrimSuffix(baseName, filepath.Ext(baseName))
-
-	newPath := name + ".ascii" + filepath.Ext(baseName)
-
-	return filepath.Join(filepath.Dir(imgPath), newPath)
 }
