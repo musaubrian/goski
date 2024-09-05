@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/jpeg"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
