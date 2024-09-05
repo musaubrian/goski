@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/jpeg"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -41,7 +42,7 @@ func main() {
 	if strings.Contains(imgPath, "http") && !remote {
 		slog.Error("To use a remote resource, please use the `-r` flag")
 		return
-	} else {
+	} else if remote && !strings.Contains(imgPath, "http") {
 		filepath, err := getRemoteResource(imgPath)
 		if err != nil {
 			slog.Error(err.Error())
