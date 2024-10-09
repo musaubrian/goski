@@ -9,6 +9,7 @@ import (
 	_ "image/png"
 	"io"
 	"log/slog"
+	"math"
 	"math/rand/v2"
 	"net/http"
 	"os"
@@ -55,7 +56,11 @@ func main() {
 		slog.Error(fmt.Sprintf("Failed to open:\n%s", err.Error()))
 		return
 	}
-	defer f.Close()
+
+	defer func() {
+		f.Close()
+		os.Remove(imgPath)
+	}()
 
 	img, _, err := image.Decode(f)
 	if err != nil {
@@ -97,16 +102,32 @@ func grayScaledAscii(img image.Image, font []string) string {
 	return asciiImgChars.String()
 }
 
+func adjustBrightness(channel uint32, adjustment float64, alpha uint32) uint32 {
+	alphaFactor := float64(alpha) / 255.0
+
+	adjusted := float64(channel) * adjustment * alphaFactor
+
+	return uint32(math.Min(math.Max(adjusted, 0), 255))
+}
+
 func coloredAsciiOutput(img image.Image, font []string) string {
 	var coloredAscii strings.Builder
 	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
 		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
 			c := img.At(x, y)
-			r, g, b, _ := c.RGBA()
+			r, g, b, a := c.RGBA()
 			// Normalize the RGB values to 0-255 range
 			r = r >> 8
 			g = g >> 8
 			b = b >> 8
+			a = a >> 8
+
+			brightnessAdjustment := 1.3
+
+			r = adjustBrightness(r, brightnessAdjustment, a)
+			g = adjustBrightness(g, brightnessAdjustment, a)
+			b = adjustBrightness(b, brightnessAdjustment, a)
+
 			// average intensity
 			avg := (r + g + b) / 3
 			char := int(avg) * (len(font) - 1) / 255
