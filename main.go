@@ -59,7 +59,9 @@ func main() {
 
 	defer func() {
 		f.Close()
-		os.Remove(imgPath)
+		if remote {
+			os.Remove(imgPath)
+		}
 	}()
 
 	img, _, err := image.Decode(f)
